@@ -29,12 +29,15 @@ async function bootstrap() {
   const audio = new AudioEngine();
   audio.setMuted(!storage.getSettings().sound);
 
-  // Hook Poki ad events to mute audio & suspend inputs
+  // Hook SDK ad events to mute audio & suspend inputs
   poki.onAdStart = () => {
     audio.setAdMuted(true);
   };
   poki.onAdEnd = () => {
     audio.setAdMuted(false);
+  };
+  poki.onAudioMutedCallback = (isMuted) => {
+    audio.setMuted(isMuted);
   };
 
   // 3. UI Elements

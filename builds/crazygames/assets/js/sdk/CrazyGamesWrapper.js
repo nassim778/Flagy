@@ -22,6 +22,15 @@ export class CrazyGamesWrapper {
         this.sdk = window.CrazyGames.SDK;
         await this.sdk.init();
         this.isInitialized = true;
+
+        // CrazyGames audio mute setting sync
+        if (typeof this.sdk?.game?.onAudioMuted === 'function') {
+          this.sdk.game.onAudioMuted((isMuted) => {
+            if (typeof this.onAudioMutedCallback === 'function') {
+              this.onAudioMutedCallback(isMuted);
+            }
+          });
+        }
       }
     } catch (err) {
       this.isInitialized = false;
