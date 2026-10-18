@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Poki SDK Inspector & Event Sequence Test Bench</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      margin: 0;
+      padding: 20px;
+      background: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    header {
+      border-bottom: 1px solid #334155;
+      padding-bottom: 12px;
+    }
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 20px;
+      color: #38bdf8;
+    }
+    p {
+      margin: 0;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+      height: calc(100vh - 120px);
+    }
+    .panel {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    button {
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: none;
+      background: #0284c7;
+      color: #ffffff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0369a1;
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #0f172a;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .log-container {
+      flex: 1;
+      background: #020617;
+      border-radius: 6px;
+      padding: 12px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      border: 1px solid #1e293b;
+    }
+    .log-item {
+      padding: 3px 0;
+      border-bottom: 1px solid #1e293b;
+    }
+    .log-success { color: #4ade80; }
+    .log-warn { color: #facc15; }
+    .log-error { color: #f87171; font-weight: bold; }
+    .game-frame {
+      width: 100%;
+      height: 100%;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #000000;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Poki SDK Local Dev Inspector & Test Harness</h1>
+    <p>Monitors strict alternating gameplayStart/gameplayStop invariant and ad callbacks in iframe.</p>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="controls">
+        <div class="toggle-row">
+          <span>Simulate Ad Blocker</span>
+          <input type="checkbox" id="chk-ad-blocker">
+        </div>
+        <div class="toggle-row">
+          <span>Force Rewarded Ad Failure</span>
+          <input type="checkbox" id="chk-reward-fail">
+        </div>
+        <button id="btn-clear-logs">Clear Event Log</button>
+        <button id="btn-reload-game">Reload Game</button>
+      </div>
+
+      <h3 style="font-size: 14px; margin: 0 0 8px 0; color: #94a3b8;">Event Audit Log</h3>
+      <div id="log-list" class="log-container"></div>
+    </div>
+
+    <div class="panel" style="padding: 0;">
+      <iframe id="game-iframe" class="game-frame" src="../index.html"></iframe>
+    </div>
+  </div>
+
+  <script>
+    const logList = document.getElementById('log-list');
+    const chkAdBlocker = document.getElementById('chk-ad-blocker');
+    const chkRewardFail = document.getElementById('chk-reward-fail');
+    const gameIframe = document.getElementById('game-iframe');
+
+    let lastSDKEvent = null;
+
+    function addLog(message, type = 'info') {
+      const el = document.createElement('div');
+      el.className = `log-item log-${type}`;
+      const time = new Date().toISOString().split('T')[1].slice(0, 8);
+      el.textContent = `[${time}] ${message}`;
+      logList.appendChild(el);
+      logList.scrollTop = logList.scrollHeight;
+    }
+
+    // Mock Poki SDK Stub attached to iframe window
+    function installPokiStub(targetWindow) {
+      targetWindow.PokiSDK = {
+        init: () => {
+          if (chkAdBlocker.checked) {
+            addLog('PokiSDK.init() rejected (AdBlocker active)', 'warn');
+            return Promise.reject(new Error('AdBlocker active'));
+          }
+          addLog('PokiSDK.init() resolved successfully', 'success');
+          return Promise.resolve();
+        },
+        gameLoadingFinished: () => {
+          addLog('PokiSDK.gameLoadingFinished() called', 'info');
+        },
+        gameplayStart: () => {
+          if (lastSDKEvent === 'gameplayStart') {
+            addLog('CRITICAL ERROR: gameplayStart called twice consecutively!', 'error');
+          } else {
+            addLog('PokiSDK.gameplayStart() called (Invariants OK)', 'success');
+          }
+          lastSDKEvent = 'gameplayStart';
+        },
+        gameplayStop: () => {
+          if (lastSDKEvent === 'gameplayStop') {
+            addLog('CRITICAL ERROR: gameplayStop called twice consecutively!', 'error');
+          } else {
+            addLog('PokiSDK.gameplayStop() called (Invariants OK)', 'info');
+          }
+          lastSDKEvent = 'gameplayStop';
+        },
+        commercialBreak: () => {
+          addLog('PokiSDK.commercialBreak() started', 'warn');
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              addLog('PokiSDK.commercialBreak() finished', 'info');
+              resolve();
+            }, 600);
+          });
+        },
+        rewardedBreak: () => {
+          addLog('PokiSDK.rewardedBreak() started', 'warn');
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              const success = !chkRewardFail.checked && !chkAdBlocker.checked;
+              addLog(`PokiSDK.rewardedBreak() resolved with success = ${success}`, success ? 'success' : 'warn');
+              resolve(success);
+            }, 800);
+          });
+        },
+        openExternalLink: (url) => {
+          addLog(`PokiSDK.openExternalLink("${url}") called`, 'info');
+        }
+      };
+    }
+
+    gameIframe.addEventListener('load', () => {
+      try {
+        installPokiStub(gameIframe.contentWindow);
+        addLog('Injected Poki SDK Stub into game frame', 'info');
+      } catch (err) {
+        addLog(`Could not inject stub (cross-origin limitation, use http dev server): ${err.message}`, 'error');
+      }
+    });
+
+    document.getElementById('btn-clear-logs').addEventListener('click', () => {
+      logList.innerHTML = '';
+      lastSDKEvent = null;
+    });
+
+    document.getElementById('btn-reload-game').addEventListener('click', () => {
+      lastSDKEvent = null;
+      gameIframe.src = gameIframe.src;
+    });
+  </script>
+</body>
+</html>
