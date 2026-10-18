@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Flag Finder: World Tour</title>
+  
+
+  <!-- Bundled Local Leaflet 1.9.4 Stylesheet -->
+  <link rel="stylesheet" href="assets/vendor/leaflet.css">
+
+  <!-- Core Responsive Stylesheet -->
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <!-- Loading Bar & Logo (Poki initial download screen) -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-content">
+      <div class="loading-logo">
+        <span class="logo-plane">
+          <svg class="svg-loading-plane" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13" /><polygon points="22 2 15 22 11 13 2 9 22 2" fill="#d97706" fill-opacity="0.3" /></svg>
+        </span>
+        <h1 class="logo-title">Flag Finder</h1>
+        <p class="logo-subtitle">World Tour</p>
+      </div>
+      <div class="loading-bar-container">
+        <div class="loading-bar-progress"></div>
+      </div>
+      <p class="loading-status">Preparing passport & maps...</p>
+    </div>
+  </div>
+
+  <!-- Main Game Container (16:9 proportional & full-bleed responsive) -->
+  <div id="game-app" class="game-app">
+    
+
+    <!-- HUD Header -->
+    <header class="game-hud">
+      <div class="hud-left">
+        <button id="btn-hud-pause" class="btn-icon" aria-label="Pause Game" title="Pause">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="8" y1="5" x2="8" y2="19"></line><line x1="16" y1="5" x2="16" y2="19"></line></svg>
+        </button>
+        <button id="btn-hud-mode" class="btn-icon" aria-label="Select Game Mode" title="Game Modes">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="currentColor" fill-opacity="0.25"></polygon></svg>
+        </button>
+        <button id="btn-hud-passport" class="btn-icon" aria-label="Open Passport" title="Passport Collection">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="3" fill="#1e3a8a" fill-opacity="0.15"></rect><circle cx="12" cy="11" r="4.5" stroke="#d97706"></circle><path d="M12 6.5V15.5M7.5 11H16.5" stroke="#d97706"></path><path d="M8 18H16"></path></svg>
+        </button>
+        <span id="hud-mode-title" class="hud-mode-badge">World Tour</span>
+      </div>
+
+      <div class="hud-center">
+        <div class="hud-stat">
+          <span class="hud-label">SCORE</span>
+          <span id="hud-score" class="hud-val">0</span>
+        </div>
+        <div class="hud-stat">
+          <span class="hud-label">BEST</span>
+          <span id="hud-high-score" class="hud-val">0</span>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <div id="hud-lives" class="hud-lives-container">
+          <!-- Populated dynamically with custom SVG heart icons -->
+        </div>
+        <div id="hud-round" class="hud-round-pill">Round 1</div>
+      </div>
+    </header>
+
+    <!-- Feedback Banner (Warmer/Colder, Score, Country Name) -->
+    <div id="feedback-banner" class="feedback-banner"></div>
+
+    <!-- Main Map Stage -->
+    <main class="map-stage">
+      <div id="map-container" class="map-container"></div>
+      <!-- Flight Path & Stamp Canvas Overlay -->
+      <canvas id="fx-canvas" class="fx-canvas"></canvas>
+
+      <!-- Visual Hand Tutorial ("Tap the country") -->
+      <div id="tutorial-hand" class="tutorial-hand">
+        <div class="hand-icon">
+          <svg class="svg-touch-pointer" viewBox="0 0 48 48" fill="none">
+            <circle class="touch-ring" cx="24" cy="24" r="16" stroke="#ffffff" stroke-width="2.5" opacity="0.6"/>
+            <circle class="touch-dot" cx="24" cy="24" r="7" fill="#ffffff"/>
+            <path d="M24 24L36 38" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="hand-caption" data-i18n="tap_the_country">Tap the country!</div>
+      </div>
+
+      <!-- Streak Combo Indicator -->
+      <div id="hud-streak-badge" class="streak-badge">3x STREAK!</div>
+
+      <!-- Desktop Keyboard Pan Hints -->
+      <div id="desktop-kbd-hints" class="desktop-hints">
+        <span>⌨️ Arrows: Pan | +/-: Zoom | Space: Pause</span>
+      </div>
+    </main>
+
+    <!-- Bottom Question Card (Flag & Target Prompt) -->
+    <footer class="question-card">
+      <div class="flag-wrapper">
+        <img id="quiz-flag-img" class="quiz-flag" src="" alt="Quiz Flag" draggable="false">
+      </div>
+      <div class="prompt-text">
+        <span class="prompt-sub">Where in the world is this flag?</span>
+        <span class="prompt-main">Tap its location on the map!</span>
+      </div>
+    </footer>
+
+    <!-- Pause Menu Modal -->
+    <div id="pause-modal" class="modal-overlay">
+      <div class="modal-card">
+        <h2 class="modal-title" data-i18n="paused">Game Paused</h2>
+        <div class="modal-actions">
+          <button id="btn-resume" class="btn btn-primary btn-large" data-i18n="resume">▶ Resume Flight</button>
+          <button id="btn-sound-toggle" class="btn btn-secondary">🔊 Sound: ON</button>
+          
+          <div class="lang-selector-row">
+            <span class="lang-label">Language:</span>
+            <div class="lang-buttons">
+              <button class="btn-lang" data-lang="en">EN</button>
+              <button class="btn-lang" data-lang="fr">FR</button>
+              <button class="btn-lang" data-lang="es">ES</button>
+              <button class="btn-lang" data-lang="pt">PT</button>
+              <button class="btn-lang" data-lang="ar">العربية</button>
+            </div>
+          </div>
+
+          <button id="btn-restart" class="btn btn-secondary">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+            <span data-i18n="restart">Restart Tour</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over Modal (Poki Compliant Ad/Reward Layout) -->
+    <div id="game-over-modal" class="modal-overlay">
+      <div class="modal-card">
+        <h2 class="modal-title" data-i18n="flight_ended">Flight Ended</h2>
+        <div class="score-summary">
+          <div class="score-big">
+            <span class="score-label" data-i18n="final_score">FINAL SCORE</span>
+            <span id="final-score-val" class="score-number">0</span>
+            <span id="final-high-badge" class="badge-new-high">
+              <svg class="svg-icon trophy-icon" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2"></path><path d="M18 9h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2"></path><path d="M4 3h16v6a8 8 0 0 1-16 0V3z" fill="#fef08a"></path><path d="M12 17v4"></path><path d="M8 21h8"></path></svg>
+              <span data-i18n="new_best">NEW BEST!</span>
+            </span>
+          </div>
+          <div id="final-stamps-val" class="stamps-count">0 Stamps Collected</div>
+        </div>
+
+        <div class="modal-actions">
+          <!-- Standard Continue / Play Again button (equal or larger than rewarded button) -->
+          <button id="btn-play-again" class="btn btn-primary btn-large">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13" /><polygon points="22 2 15 22 11 13 2 9 22 2" fill="currentColor" fill-opacity="0.2" /></svg>
+            <span data-i18n="play_again">Play Again</span>
+          </button>
+
+          <!-- Rewarded Extra Life button (NOT green, 🎬 icon, clearly states ad) -->
+          <button id="btn-extra-life" class="btn btn-rewarded">
+            <span class="btn-icon-ad">
+              <svg class="svg-icon ad-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" fill="rgba(255,255,255,0.15)"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="7" y1="4" x2="5" y2="10"></line><line x1="13" y1="4" x2="11" y2="10"></line><line x1="19" y1="4" x2="17" y2="10"></line></svg>
+            </span>
+            <span class="btn-text-wrap">
+              <strong data-i18n="extra_life">Extra Life</strong>
+              <small data-i18n="watch_ad">Watch an ad to continue</small>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode Selection Modal -->
+    <div id="mode-modal" class="modal-overlay">
+      <div class="modal-card modal-card-wide">
+        <div class="modal-header-row">
+          <h2 class="modal-title" data-i18n="select_mode">Select Mode</h2>
+          <button id="btn-close-mode" class="btn-close" aria-label="Close">✕</button>
+        </div>
+        <div class="mode-cards-grid">
+          <div class="mode-card" data-game-mode="endless">
+            <div class="mode-icon">
+              <svg class="svg-icon-large" viewBox="0 0 24 24" fill="none" stroke="#1e3a8a" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            </div>
+            <div class="mode-info">
+              <h3 data-i18n="endless_title">Endless World Tour</h3>
+              <p data-i18n="endless_desc">3 lives, streak multipliers, all sovereign nations. Forgiving start!</p>
+            </div>
+            <button class="btn btn-primary" data-i18n="start_tour">Start Tour</button>
+          </div>
+
+          <div class="mode-card" data-game-mode="daily">
+            <div class="mode-icon">
+              <svg class="svg-icon-large" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            </div>
+            <div class="mode-info">
+              <h3 data-i18n="daily_title">Daily Flight</h3>
+              <p data-i18n="daily_desc">Same 10 flags for everyone today. Keep your daily streak going!</p>
+              <div class="daily-meta-row">
+                <span id="daily-streak-badge" class="meta-tag">0 Day Streak</span>
+                <span id="daily-best-score" class="meta-tag">Best: 0</span>
+              </div>
+            </div>
+            <button class="btn btn-primary" data-i18n="fly_daily">Fly Daily</button>
+          </div>
+
+          <div class="mode-card-regions">
+            <h3 data-i18n="continent_expeditions">Continent Expeditions</h3>
+            <div class="regions-buttons-grid">
+              <button class="btn-region" data-game-mode="regions" data-region="europe">Europe</button>
+              <button class="btn-region" data-game-mode="regions" data-region="asia">Asia</button>
+              <button class="btn-region" data-game-mode="regions" data-region="africa">Africa</button>
+              <button class="btn-region" data-game-mode="regions" data-region="americas">Americas</button>
+              <button class="btn-region" data-game-mode="regions" data-region="oceania">Oceania</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Passport Stamp Collection Modal -->
+    <div id="passport-modal" class="modal-overlay">
+      <div class="modal-card modal-card-wide modal-passport">
+        <div class="modal-header-row">
+          <div class="passport-title-wrap">
+            <span class="passport-icon">
+              <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="3" fill="#1e3a8a" fill-opacity="0.15"></rect><circle cx="12" cy="11" r="4.5" stroke="#d97706"></circle><path d="M12 6.5V15.5M7.5 11H16.5" stroke="#d97706"></path><path d="M8 18H16"></path></svg>
+            </span>
+            <h2 class="modal-title" data-i18n="passport_title">Official Passport</h2>
+          </div>
+          <button id="btn-close-passport" class="btn-close" aria-label="Close">✕</button>
+        </div>
+
+        <div id="passport-summary" class="passport-summary-bar"></div>
+
+        <div id="passport-tabs" class="passport-tabs-nav">
+          <button class="passport-tab active" data-continent="all">All</button>
+          <button class="passport-tab" data-continent="europe">Europe</button>
+          <button class="passport-tab" data-continent="asia">Asia</button>
+          <button class="passport-tab" data-continent="africa">Africa</button>
+          <button class="passport-tab" data-continent="americas">Americas</button>
+          <button class="passport-tab" data-continent="oceania">Oceania</button>
+        </div>
+
+        <div id="passport-grid" class="passport-grid-container"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Local Leaflet 1.9.4 Vendor Script -->
+  <script src="assets/vendor/leaflet.js"></script>
+
+  <!-- Main ES Module Game Script -->
+  <script type="module" src="assets/js/main.js"></script>
+</body>
+</html>
